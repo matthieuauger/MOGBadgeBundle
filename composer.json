@@ -1,0 +1,26 @@
+{
+    "name": "mog/badge-bundle",
+    "type": "symfony-bundle",
+    "description": "Symfony MOGBadgeBundle",
+    "keywords": ["Badge management"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Matthieu Auger",
+            "email": "mail@matthieuauger.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=5.3.2",
+        "symfony/framework-bundle": "~2.1"
+    },
+    "require-dev": {
+        "symfony/yaml": "~2.1",
+        "symfony/validator": "~2.1"
+    },
+    "autoload": {
+        "psr-0": { "MOG\\Bundle\\BadgeBundle": "" }
+    },
+    "target-dir": "MOG/Bundle/BadgeBundle"
+}
