@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <services>
+        <service id="mog_badge.config.loader" class="MOG\Bundle\BadgeBundle\Loader\BadgeConfigLoader">
+            <argument>%mog.badges%</argument>
+        </service>
+
+        <service id="mog_badge.event_subscriber.badge_attribution" class="MOG\Bundle\BadgeBundle\EventListener\BadgeAttributionSubscriber">
+            <argument type="service" id="service_container" />
+        </service>
+
+        <service id="mog_badge.twig.badge_extension" class="MOG\Bundle\BadgeBundle\Twig\BadgeExtension">
+            <argument type="service" id="twig" />
+            <argument type="service" id="mog_badge.config.loader"/>
+            <tag name="twig.extension" />
+        </service>
+    </services>
+</container>
