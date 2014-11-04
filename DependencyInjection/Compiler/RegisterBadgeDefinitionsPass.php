@@ -73,9 +73,6 @@ class RegisterBadgeDefinitionsPass implements CompilerPassInterface
                     );
                 }
 
-                /**
-                 * We make badge attribution service aware of the event specified in the tag
-                 */
                 $eventDispatcherDefinition->addMethodCall(
                     'addListenerService',
                     array(
@@ -85,9 +82,6 @@ class RegisterBadgeDefinitionsPass implements CompilerPassInterface
                     )
                 );
 
-                /**
-                 * We add the definitions to the definition collection of the badge attribution subscriber
-                 */
                 $badgeAttributionSubscriberDefinition->addMethodCall(
                     'addBadgeDefinition',
                     array(

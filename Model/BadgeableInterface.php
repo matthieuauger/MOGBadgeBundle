@@ -2,8 +2,6 @@
 
 namespace MOG\Bundle\BadgeBundle\Model;
 
-use MOG\Bundle\BadgeBundle\Entity\Badge;
-
 interface BadgeableInterface
 {
     /**

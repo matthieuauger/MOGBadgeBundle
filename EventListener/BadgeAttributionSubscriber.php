@@ -2,11 +2,15 @@
 
 namespace MOG\Bundle\BadgeBundle\EventListener;
 
-use MOG\Bundle\BadgeBundle\Entity\Badge;
+use MOG\Bundle\BadgeBundle\Model\Badge;
+use MOG\Bundle\BadgeBundle\Event\AwardBadgeEvent;
+use MOG\Bundle\BadgeBundle\Event\BadgeEvents;
+use MOG\Bundle\BadgeBundle\Model\BadgeFactory;
 use MOG\Bundle\BadgeBundle\Model\BadgeableInterface;
 use MOG\Bundle\BadgeBundle\Model\BadgeEventInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+
 
 class BadgeAttributionSubscriber implements EventSubscriberInterface
 {
@@ -16,13 +20,19 @@ class BadgeAttributionSubscriber implements EventSubscriberInterface
     private $container;
 
     /**
+     * @var BadgeFactory
+     */
+    private $badgeFactory;
+
+    /**
      * @var array
      */
     private $badgeDefinitions = array();
 
-    public function __construct(ContainerInterface $container)
+    public function __construct(ContainerInterface $container, BadgeFactory $badgeFactory)
     {
         $this->container = $container;
+        $this->badgeFactory = $badgeFactory;
     }
 
     /**
@@ -39,52 +49,40 @@ class BadgeAttributionSubscriber implements EventSubscriberInterface
      */
     public function updateBadges($event)
     {
-        if (!$event instanceof BadgeEventInterface) {
-            throw new \Exception(sprintf('The event "%s" does not implement \MOG\Bundle\BadgeBundle\Model\BadgeEventInterface', get_class($event)));
-        }
-
-        $badgeable = $event->getBadgeable();
-
-        if (!$badgeable instanceof BadgeableInterface) {
-            return;
-        }
-
-        /* A badge definition is bound to an event. When the event is dispatched, we loop into each of theses definitions
-         * to see if the badge is earned or not
-         */
         foreach ($this->badgeDefinitions[$event->getName()] as $definitionId) {
             $definition = $this->container->get($definitionId);
-            $relatedBadge = $definition->getRelatedBadge();
 
-            /* Does the user already have this badge ? */
-            $isBadgeAlreadyEarned = false;
-            foreach ($badgeable->getBadges() as $alreadyEarnedBadge) {
-                if ($alreadyEarnedBadge->getType() === $relatedBadge) {
-                    $isBadgeAlreadyEarned = true;
-                }
-            }
+            if ($definition->supports($event)) {
+                $badge = $this->badgeFactory->create();
+                $badge->setType($definition->getBadgeName());
 
-            /* Does the user meet the badge requirements ? */
-            $isUserMeetingBadgeRequirements = $definition->isApplicable($badgeable);
+                $badgeable = $definition->getBadgeable($event);
 
-            /* We give the badge to the user if he doesn't have it yet AND he meets the requirements for this badge */
-            $addBadgeToUser = !$isBadgeAlreadyEarned && $isUserMeetingBadgeRequirements;
+                $isAlreadyEarned = $this->isAlreadyEarned($badgeable, $badge);
 
-            /* We remove the badge to the user if he already have it AND he doesn't meet the requirement for this badge anymore */
-            $removeBadgeToUser =  $isBadgeAlreadyEarned && !$isUserMeetingBadgeRequirements;
+                $isApplicable = $definition->isApplicable($event);
 
-            if ($addBadgeToUser || $removeBadgeToUser) {
-                $badge = new Badge();
-                $badge->setType($relatedBadge);
-                $badge->setAwardingDate(new \DateTime());
-
-                if ($addBadgeToUser) {
+                if (!$isAlreadyEarned && $isApplicable) {
+                    $badge->setAwardingDate(new \DateTime());
                     $badgeable->addBadge($badge);
-                } else {
+                    $addedEvent = new AwardBadgeEvent($badgeable, $badge->getType());
+                    $this->container->get('event_dispatcher')->dispatch(BadgeEvents::AWARD_BADGE_EVENT, $addedEvent);
+                } elseif ($isAlreadyEarned && !$isApplicable) {
                     $badgeable->removeBadge($badge);
                 }
             }
         }
+    }
+
+    private function isAlreadyEarned(BadgeableInterface $badgeable, Badge $badge)
+    {
+        foreach ($badgeable->getBadges() as $alreadyEarnedBadge) {
+            if ($alreadyEarnedBadge->getType() === $badge->getType()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

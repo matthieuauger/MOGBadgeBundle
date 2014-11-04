@@ -7,7 +7,8 @@ use MOG\Bundle\BadgeBundle\EventListener\BadgeAttributionSubscriber;
 use MOG\Bundle\BadgeBundle\Model\BadgeDefinitionInterface;
 use MOG\Bundle\BadgeBundle\Model\BadgeEventInterface;
 use MOG\Bundle\BadgeBundle\Model\BadgeableInterface;
-use MOG\Bundle\BadgeBundle\Entity\Badge;
+use MOG\Bundle\BadgeBundle\Model\Badge;
+use MOG\Bundle\BadgeBundle\Model\BadgeFactory;
 use Phake;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\Event;
@@ -30,51 +31,35 @@ class BadgeAttributionSubscriberTest extends \PHPUnit_Framework_TestCase
     private $definition;
 
     /**
-     * @var BadgeEventInterface
+     * @var BadgeFactory
+     */
+    private $badgeFactory;
+
+    /**
+     * @var Event
      */
     private $event;
 
     public function setup()
     {
+        $this->dispatcher = Phake::mock(ContainerAwareEventDispatcher::class);
+        Phake::when($this->dispatcher)->dispatch()->thenReturn(Phake::anyParameters());
+
+        $this->badgeFactory = new BadgeFactory();
+
         $this->container = Phake::mock(ContainerInterface::class);
 
         $this->badgeable = Phake::mock(BadgeableInterface::class);
 
-        $this->event = Phake::mock(BadgeEventInterface::class);
-        Phake::when($this->event)->getBadgeable()->thenReturn($this->badgeable);
+        $this->event = Phake::mock(Event::class);
         Phake::when($this->event)->getName()->thenReturn('dummy_event');
 
         $this->definition = Phake::mock(BadgeDefinitionInterface::class);
-        Phake::when($this->definition)->getRelatedBadge()->thenReturn('dummy_badge');
+        Phake::when($this->definition)->getBadgeable($this->event)->thenReturn($this->badgeable);
+        Phake::when($this->definition)->getBadgeName()->thenReturn('dummy_badge');
+        Phake::when($this->definition)->supports($this->event)->thenReturn(true);
 
         Phake::when($this->container)->get('dummy_definition')->thenReturn($this->definition);
-    }
-
-    /**
-     * If the event does not implements Event
-     */
-    public function testSubscriberOnlyHandlesBadgeEventInterface()
-    {
-        $event = Phake::mock(Event::class);
-        $bas = new BadgeAttributionSubscriber($this->container);
-
-        $this->setExpectedException('\Exception');
-
-        $bas->updateBadges($event);
-    }
-
-    /**
-     * If the event->getBadgeable() does not return a badgeable, don't do anything
-     */
-    public function testSubscriberOnlyHandlesBadgeEventWithBadgeables()
-    {
-        $event = Phake::mock(BadgeEventInterface::class);
-        Phake::when($event)->getBadgeable()->thenReturn($event);
-        $bas = new BadgeAttributionSubscriber($this->container);
-
-        $bas->updateBadges($event);
-
-        Phake::verify($event, Phake::times(0))->getName();
     }
 
     /**
@@ -85,12 +70,13 @@ class BadgeAttributionSubscriberTest extends \PHPUnit_Framework_TestCase
     {
         Phake::when($this->badgeable)->getBadges()->thenReturn(array());
 
-        $bas = new BadgeAttributionSubscriber($this->container);
+        $bas = new BadgeAttributionSubscriber($this->container, $this->badgeFactory);
         $bas->addBadgeDefinition('dummy_event', 'dummy_definition');
 
         $bas->updateBadges($this->event);
 
-        Phake::verify($this->definition, Phake::times(1))->isApplicable($this->badgeable);
+        Phake::verify($this->definition, Phake::times(1))->supports($this->event);
+        Phake::verify($this->definition, Phake::times(1))->isApplicable($this->event);
     }
 
     /**
@@ -102,18 +88,22 @@ class BadgeAttributionSubscriberTest extends \PHPUnit_Framework_TestCase
         Phake::when($this->badgeable)->getBadges()->thenReturn(array());
 
         $definition2 = Phake::mock(BadgeDefinitionInterface::class);
-        Phake::when($definition2)->getRelatedBadge()->thenReturn('dummy_badge_2');
+        Phake::when($definition2)->getBadgeable($this->event)->thenReturn($this->badgeable);
+        Phake::when($definition2)->getBadgeName()->thenReturn('dummy_badge_2');
+        Phake::when($definition2)->supports($this->event)->thenReturn(true);
 
         Phake::when($this->container)->get('dummy_definition_2')->thenReturn($definition2);
 
-        $bas = new BadgeAttributionSubscriber($this->container);
+        $bas = new BadgeAttributionSubscriber($this->container, $this->badgeFactory);
         $bas->addBadgeDefinition('dummy_event', 'dummy_definition');
         $bas->addBadgeDefinition('dummy_event', 'dummy_definition_2');
 
         $bas->updateBadges($this->event);
 
-        Phake::verify($this->definition, Phake::times(1))->isApplicable($this->badgeable);
-        Phake::verify($definition2, Phake::times(1))->isApplicable($this->badgeable);
+        Phake::verify($this->definition, Phake::times(1))->supports($this->event);
+        Phake::verify($this->definition, Phake::times(1))->isApplicable($this->event);
+        Phake::verify($definition2, Phake::times(1))->supports($this->event);
+        Phake::verify($definition2, Phake::times(1))->isApplicable($this->event);
     }
 
     /**
@@ -123,9 +113,9 @@ class BadgeAttributionSubscriberTest extends \PHPUnit_Framework_TestCase
     public function testAddBadgeIfUserMeetsRequirements()
     {
         Phake::when($this->badgeable)->getBadges()->thenReturn(array());
-        Phake::when($this->definition)->isApplicable($this->badgeable)->thenReturn(true);
+        Phake::when($this->definition)->isApplicable($this->event)->thenReturn(true);
 
-        $bas = new BadgeAttributionSubscriber($this->container);
+        $bas = new BadgeAttributionSubscriber($this->container, $this->badgeFactory);
         $bas->addBadgeDefinition('dummy_event', 'dummy_definition');
 
         $bas->updateBadges($this->event);
@@ -140,9 +130,9 @@ class BadgeAttributionSubscriberTest extends \PHPUnit_Framework_TestCase
     public function testAddBadgeIfUserDoesNotMeetRequirements()
     {
         Phake::when($this->badgeable)->getBadges()->thenReturn(array());
-        Phake::when($this->definition)->isApplicable($this->badgeable)->thenReturn(false);
+        Phake::when($this->definition)->isApplicable($this->event)->thenReturn(false);
 
-        $bas = new BadgeAttributionSubscriber($this->container);
+        $bas = new BadgeAttributionSubscriber($this->container, $this->badgeFactory);
         $bas->addBadgeDefinition('dummy_event', 'dummy_definition');
 
         $bas->updateBadges($this->event);
@@ -159,9 +149,9 @@ class BadgeAttributionSubscriberTest extends \PHPUnit_Framework_TestCase
         Phake::when($badge)->getType()->thenReturn('dummy_badge');
 
         Phake::when($this->badgeable)->getBadges()->thenReturn(array($badge));
-        Phake::when($this->definition)->isApplicable($this->badgeable)->thenReturn(true);
+        Phake::when($this->definition)->isApplicable($this->event)->thenReturn(true);
 
-        $bas = new BadgeAttributionSubscriber($this->container);
+        $bas = new BadgeAttributionSubscriber($this->container, $this->badgeFactory);
         $bas->addBadgeDefinition('dummy_event', 'dummy_definition');
 
         $bas->updateBadges($this->event);
@@ -179,9 +169,9 @@ class BadgeAttributionSubscriberTest extends \PHPUnit_Framework_TestCase
         Phake::when($badge)->getType()->thenReturn('dummy_badge');
 
         Phake::when($this->badgeable)->getBadges()->thenReturn(array($badge));
-        Phake::when($this->definition)->isApplicable($this->badgeable)->thenReturn(false);
+        Phake::when($this->definition)->isApplicable($this->event)->thenReturn(false);
 
-        $bas = new BadgeAttributionSubscriber($this->container);
+        $bas = new BadgeAttributionSubscriber($this->container, $this->badgeFactory);
         $bas->addBadgeDefinition('dummy_event', 'dummy_definition');
 
         $bas->updateBadges($this->event);

@@ -29,14 +29,14 @@ Ex:
             return $subject->hasSkills();
         }
 
-        public function getRelatedBadge()
+        public function getBadgeName()
         {
             return 'skills';
         }
     }
 
 The function isApplicable() defines the logic need to acquire the badge.
-The method getRelatedBadge() should return the name of the badge (the key in the config.yml file. In our example, it's 'skills')
+The method getBadgeName() should return the name of the badge (the key in the config.yml file. In our example, it's 'skills')
 
 3. A badge definition is a service. Tag this service with 'maresidence_badge.definition':
 

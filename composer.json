@@ -16,11 +16,13 @@
         "symfony/framework-bundle": "~2.1"
     },
     "require-dev": {
-        "symfony/yaml": "~2.1",
-        "symfony/validator": "~2.1"
+        "phpunit/phpunit": "~4.5@dev",
+        "phake/phake": "~2.0@dev"
     },
     "autoload": {
-        "psr-0": { "MOG\\Bundle\\BadgeBundle": "" }
+        "psr-0": { "MOG\\Bundle\\BadgeBundle\\": "" }
     },
-    "target-dir": "MOG/Bundle/BadgeBundle"
+    "config": {
+        "bin-dir": "bin"
+    }
 }

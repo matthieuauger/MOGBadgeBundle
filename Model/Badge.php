@@ -1,14 +1,9 @@
 <?php
 
-namespace MOG\Bundle\BadgeBundle\Entity;
+namespace MOG\Bundle\BadgeBundle\Model;
 
 class Badge
 {
-    /**
-     * @var integer
-     */
-    private $id;
-
     /**
      * @var string
      */
@@ -18,16 +13,6 @@ class Badge
      * @var \DateTime
      */
     private $awardingDate;
-
-    /**
-     * Get id
-     *
-     * @return integer
-     */
-    public function getId()
-    {
-        return $this->id;
-    }
 
     /**
      * @param string $type
@@ -55,7 +40,7 @@ class Badge
      *
      * @return Badge
      */
-    public function setAwardingDate($awardingDate)
+    public function setAwardingDate(\DateTime $awardingDate)
     {
         $this->awardingDate = $awardingDate;
 
@@ -68,5 +53,13 @@ class Badge
     public function getAwardingDate()
     {
         return $this->awardingDate;
+    }
+
+    /**
+     * @return string
+     */
+    public function __toString()
+    {
+        return $this->type;
     }
 }
