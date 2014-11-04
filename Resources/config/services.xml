@@ -15,7 +15,7 @@
 
         <service id="mog_badge.badge_factory" class="%mog_badge.badge_factory.class%" public="false" />
 
-        <service id="mog_badge.event_subscriber.badge_attribution" class="MOG\Bundle\BadgeBundle\EventListener\BadgeAttributionSubscriber" public="false">
+        <service id="mog_badge.event_subscriber.badge_attribution" class="MOG\Bundle\BadgeBundle\EventListener\BadgeAttributionSubscriber">
             <argument type="service" id="service_container" />
             <argument type="service" id="mog_badge.badge_factory" />
         </service>
