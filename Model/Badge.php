@@ -7,12 +7,12 @@ class Badge
     /**
      * @var string
      */
-    private $type;
+    protected $type;
 
     /**
      * @var \DateTime
      */
-    private $awardingDate;
+    protected $awardingDate;
 
     /**
      * @param string $type
